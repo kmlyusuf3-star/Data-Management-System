@@ -5,7 +5,6 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "postinstall": "prisma generate",
     "start": "node server.js"
   },
   "dependencies": {
@@ -14,8 +13,5 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "prisma": "^6.0.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.0"
   }
 }
