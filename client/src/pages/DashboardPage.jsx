@@ -8,16 +8,18 @@ export default function DashboardPage() {
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // State baru untuk menyimpan pilihan periode bulan (default: 6 bulan)
+  const [chartPeriod, setChartPeriod] = useState(6);
 
-  // Mengambil data dari Backend saat halaman pertama kali dibuka
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        // Memanggil 2 API sekaligus (Ringkasan dan Grafik)
         const [summaryRes, chartRes] = await Promise.all([
           api.get('/dashboard/summary'),
-          api.get('/dashboard/customer-growth?months=6')
+          // Memanggil API grafik dengan mengirimkan parameter jumlah bulan yang dipilih
+          api.get(`/dashboard/customer-growth?months=${chartPeriod}`)
         ]);
         
         setSummary(summaryRes.data.data);
@@ -32,7 +34,7 @@ export default function DashboardPage() {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [chartPeriod]); // Efek ini akan otomatis dijalankan ulang setiap kali chartPeriod diubah
 
   if (loading) return <div className="p-8 text-center text-gray-500">Memuat data dashboard...</div>;
   if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
@@ -80,7 +82,22 @@ export default function DashboardPage() {
 
       {/* Area Grafik (Chart) */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-800 mb-6">Customer Growth (Last 6 Months)</h2>
+        
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-lg font-semibold text-gray-800">Customer Growth</h2>
+          
+          {/* Dropdown Filter Periode Grafik */}
+          <select 
+            value={chartPeriod}
+            onChange={(e) => setChartPeriod(Number(e.target.value))}
+            className="bg-gray-50 border border-gray-200 text-gray-700 rounded-lg px-3 py-1 outline-none cursor-pointer focus:border-blue-500 text-sm font-medium"
+          >
+            <option value={3}>Last 3 Months</option>
+            <option value={6}>Last 6 Months</option>
+            <option value={12}>Last 12 Months</option>
+          </select>
+        </div>
+        
         <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
@@ -92,8 +109,8 @@ export default function DashboardPage() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
 
+      </div>
     </div>
   );
 }

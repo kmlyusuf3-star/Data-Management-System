@@ -4,27 +4,39 @@ import { PrismaClient } from '@prisma/client';
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// 1. GET: Ambil Semua Pelanggan & Pencarian (Sesuai PRD US-03 & US-04)
+// 1. GET: Ambil Semua Pelanggan + Pencarian + Filter + Sort
 router.get('/', async (req, res) => {
   try {
-    const { search = '', page = 1, limit = 10 } = req.query;
+    // Menangkap parameter baru: status dan sort
+    const { search = '', page = 1, limit = 10, status = 'All', sort = 'newest' } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
-    // Pencarian berdasarkan nama, email, atau phone
-    const where = search ? {
-      OR: [
-        { full_name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search } }
+    // Logika Pencarian & Filter Status
+    const where = {
+      AND: [
+        search ? {
+          OR: [
+            { full_name: { contains: search, mode: 'insensitive' } },
+            { email: { contains: search, mode: 'insensitive' } },
+            { phone: { contains: search } }
+          ]
+        } : {},
+        status !== 'All' ? { status: status } : {}
       ]
-    } : {};
+    };
+
+    // Logika Pengurutan (Sorting)
+    let orderBy = { createdAt: 'desc' }; // default: Paling Baru
+    if (sort === 'oldest') orderBy = { createdAt: 'asc' };
+    if (sort === 'name_asc') orderBy = { full_name: 'asc' };
+    if (sort === 'name_desc') orderBy = { full_name: 'desc' };
 
     const [customers, totalItems] = await Promise.all([
       prisma.customer.findMany({
         where,
         skip,
         take: Number(limit),
-        orderBy: { createdAt: 'desc' }
+        orderBy
       }),
       prisma.customer.count({ where })
     ]);
@@ -46,57 +58,41 @@ router.get('/', async (req, res) => {
   }
 });
 
-// 2. POST: Tambah Pelanggan Baru (Sesuai PRD US-06)
+// 2. POST: Tambah Pelanggan Baru
 router.post('/', async (req, res) => {
   try {
     const { full_name, email, phone, company, status } = req.body;
-
-    // Validasi sederhana (wajib isi)
-    if (!full_name || !email || !phone) {
-      return res.status(400).json({ 
-        error: { message: "Full Name, Email, dan Phone wajib diisi." } 
-      });
-    }
-
-    // Cek apakah email sudah dipakai
+    if (!full_name || !email || !phone) return res.status(400).json({ error: { message: "Data wajib diisi." } });
+    
     const existingEmail = await prisma.customer.findUnique({ where: { email } });
-    if (existingEmail) {
-      return res.status(409).json({ 
-        error: { message: "Email sudah digunakan oleh customer lain." } 
-      });
-    }
+    if (existingEmail) return res.status(409).json({ error: { message: "Email sudah digunakan." } });
 
     const newCustomer = await prisma.customer.create({
       data: { full_name, email, phone, company, status: status || "Active" }
     });
-
     res.status(201).json({ data: newCustomer });
   } catch (error) {
-    console.error("Error POST Customer:", error);
     res.status(500).json({ error: { message: "Internal Server Error" } });
   }
 });
 
-// (Nanti kita tambah fitur Detail, Edit, dan Hapus di sini)
-// 3. GET: Ambil Detail Satu Pelanggan (US-07)
+// 3. GET: Detail Pelanggan
 router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const customer = await prisma.customer.findUnique({ where: { id } });
-    if (!customer) return res.status(404).json({ error: { message: "Pelanggan tidak ditemukan" } });
+    const customer = await prisma.customer.findUnique({ where: { id: req.params.id } });
+    if (!customer) return res.status(404).json({ error: { message: "Tidak ditemukan" } });
     res.status(200).json({ data: customer });
   } catch (error) {
     res.status(500).json({ error: { message: "Internal Server Error" } });
   }
 });
 
-// 4. PUT: Edit Data Pelanggan (US-08)
+// 4. PUT: Edit Pelanggan
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { full_name, email, phone, company, status } = req.body;
-
-    // Cek apakah email yang mau diubah sudah dipakai orang lain
+    
     const existingEmail = await prisma.customer.findFirst({ where: { email, NOT: { id } } });
     if (existingEmail) return res.status(409).json({ error: { message: "Email sudah digunakan" } });
 
@@ -106,18 +102,17 @@ router.put('/:id', async (req, res) => {
     });
     res.status(200).json({ data: updatedCustomer });
   } catch (error) {
-    res.status(404).json({ error: { message: "Pelanggan tidak ditemukan" } });
+    res.status(404).json({ error: { message: "Tidak ditemukan" } });
   }
 });
 
-// 5. DELETE: Hapus Pelanggan (US-09)
+// 5. DELETE: Hapus Pelanggan
 router.delete('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    await prisma.customer.delete({ where: { id } });
-    res.status(200).json({ message: "Pelanggan berhasil dihapus" });
+    await prisma.customer.delete({ where: { id: req.params.id } });
+    res.status(200).json({ message: "Berhasil dihapus" });
   } catch (error) {
-    res.status(404).json({ error: { message: "Pelanggan tidak ditemukan" } });
+    res.status(404).json({ error: { message: "Tidak ditemukan" } });
   }
 });
 
