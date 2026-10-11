@@ -13,6 +13,9 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+app.get('/', (req, res) => {
+  res.send("API Backend Berjalan Lancar! 🚀");
+});
 
 // Gunakan route pelanggan dengan prefix /api/customers (Sesuai PRD)
 app.use('/api/customers', customerRoutes); // <-- TAMBAHKAN INI
