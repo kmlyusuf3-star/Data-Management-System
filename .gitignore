@@ -1,0 +1,9 @@
+# Mengabaikan folder dependency (Node.js) di semua sub-folder
+**/node_modules/
+
+# Mengabaikan file rahasia (Environment Variables)
+**/.env
+
+# Mengabaikan folder hasil build frontend
+**/dist/
+
