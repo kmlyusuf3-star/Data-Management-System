@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Ini adalah alamat Backend kita
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: 'https://data-management-system-zeta.vercel.app/',
 });
 
 export default api;
